@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from datetime import datetime
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import text
@@ -157,7 +157,7 @@ class JobRepository:
                     {"id": row["id"], "lease_seconds": lease_seconds},
                 )
                 updated_row = updated.mappings().one()
-                claimed.append(_job_from_row(updated_row))
+                claimed.append(_job_from_row(cast(Mapping[str, Any], updated_row)))
             return claimed
 
         return await _in_transaction(session, operation)
@@ -254,7 +254,7 @@ class JobRepository:
             {"batch_id": batch_id},
         )
         row = result.mappings().first()
-        return None if row is None else _batch_from_row(row)
+        return None if row is None else _batch_from_row(cast(Mapping[str, Any], row))
 
     async def count_jobs(self, session: AsyncSession, batch_id: UUID) -> int:
         result = await session.execute(

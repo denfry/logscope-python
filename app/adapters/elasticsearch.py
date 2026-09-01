@@ -81,7 +81,10 @@ class ElasticsearchAdapter:
                 if isinstance(error_body, dict)
                 else None
             )
-            if error_type != "resource_already_exists_exception":
+            if (
+                error_type != "resource_already_exists_exception"
+                and "resource_already_exists_exception" not in str(error)
+            ):
                 raise
 
     async def bulk_upsert(self, documents: list[dict[str, Any]]) -> list[BulkItemResult]:

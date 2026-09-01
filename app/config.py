@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     elasticsearch_username: str | None = Field(default=None, alias="ELASTICSEARCH_USERNAME")
     elasticsearch_password: str | None = Field(default=None, alias="ELASTICSEARCH_PASSWORD")
     redis_url: str = Field(default="redis://redis:6379/0", alias="REDIS_URL")
-    http_host: str = Field(default="0.0.0.0", alias="HTTP_HOST")
+    http_host: str = Field(default="127.0.0.1", alias="HTTP_HOST")
     http_port: int = Field(default=8080, alias="HTTP_PORT", gt=0, le=65535)
     worker_poll_interval: float = Field(default=0.5, alias="WORKER_POLL_INTERVAL", gt=0, le=60)
     worker_batch_size: int = Field(default=50, alias="WORKER_BATCH_SIZE", gt=0, le=100)

@@ -83,3 +83,6 @@ def run_worker() -> None:
     from app.worker import run_worker_process
 
     asyncio.run(run_worker_process(get_settings()))
+
+if __name__ == "__main__":
+    run_api()
