@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass
+from secrets import SystemRandom
 
-
+_JITTER_RANDOM = SystemRandom()
 @dataclass(frozen=True, slots=True)
 class RetryPolicy:
     base_seconds: float = 0.5
@@ -22,5 +22,5 @@ class RetryPolicy:
         exponent = min(attempt - 1, 31)
         delay = min(self.max_seconds, self.base_seconds * (2**exponent))
         if self.jitter_seconds:
-            delay = min(self.max_seconds, delay + random.uniform(0, self.jitter_seconds))
+            delay = min(self.max_seconds, delay + _JITTER_RANDOM.uniform(0, self.jitter_seconds))
         return delay

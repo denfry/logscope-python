@@ -1,0 +1,83 @@
+stages:
+  - lint
+  - unit
+  - integration
+  - build
+  - smoke
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_NO_CACHE_DIR: "1"
+
+lint:
+  stage: lint
+  image: python:3.12-slim
+  script:
+    - python -m pip install -e ".[dev]"
+    - python -m ruff check app tests scripts/smoke.py
+    - python -m mypy app
+    - python -m bandit -q -r app
+
+unit:
+  stage: unit
+  image: python:3.12-slim
+  script:
+    - python -m pip install -e ".[dev]"
+    - python -m pytest -m "not integration" --cov=app --cov-fail-under=80
+
+integration:
+  stage: integration
+  image: python:3.12-slim
+  services:
+    - name: docker:27.3.1-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - python -m pip install -e ".[dev]"
+    - python -m pytest -m integration -q
+  after_script:
+    - docker compose down -v || true
+
+build:
+  stage: build
+  image: docker:27.3.1
+  services:
+    - name: docker:27.3.1-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - docker build -t "logscope:${CI_COMMIT_SHA}" .
+  after_script:
+    - docker compose down -v || true
+
+smoke:
+  stage: smoke
+  image: docker:27.3.1
+  services:
+    - name: docker:27.3.1-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    LOGSCOPE_URL: http://docker:8080
+  before_script:
+    - apk add --no-cache python3
+  script:
+    - docker compose up -d --build
+    - |
+      api_id="$(docker compose ps -q api)"
+      for attempt in $(seq 1 60); do
+        health="$(docker inspect --format='{{.State.Health.Status}}' "$api_id" 2>/dev/null || true)"
+        if [ "$health" = "healthy" ]; then exit 0; fi
+        sleep 2
+      done
+      docker compose ps
+      docker compose logs api
+      exit 1
+    - python3 scripts/smoke.py
+  after_script:
+    - docker compose down -v || true

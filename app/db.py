@@ -13,7 +13,15 @@ from sqlalchemy.ext.asyncio import (
 
 from app.config import Settings
 
-MIGRATION_PATH = Path(__file__).resolve().parents[1] / "migrations" / "001_init.sql"
+_MIGRATION_NAME = "001_init.sql"
+_MIGRATION_CANDIDATES = (
+    Path(__file__).resolve().parents[1] / "migrations" / _MIGRATION_NAME,
+    Path.cwd() / "migrations" / _MIGRATION_NAME,
+)
+MIGRATION_PATH = next(
+    (candidate for candidate in _MIGRATION_CANDIDATES if candidate.is_file()),
+    _MIGRATION_CANDIDATES[0],
+)
 
 
 def create_engine(settings: Settings) -> AsyncEngine:
