@@ -94,7 +94,7 @@ class ElasticsearchAdapter:
             )
             operations.append(document)
         try:
-            response = await self.client.bulk(operations=operations, refresh=False)
+            response = await self.client.bulk(operations=operations, refresh="wait_for")
         except (ApiError, OSError) as error:
             status_code = getattr(error, "status_code", 503)
             return [
@@ -114,8 +114,10 @@ class ElasticsearchAdapter:
             if 200 <= status < 300:
                 results.append(BulkItemResult(document["document_id"], True, False))
                 continue
-            error = action.get("error", {})
-            error_type = error.get("type") if isinstance(error, dict) else None
+            action_error = action.get("error", {})
+            error_type = (
+                action_error.get("type") if isinstance(action_error, dict) else None
+            )
             results.append(
                 BulkItemResult(
                     document_id=document["document_id"],
@@ -137,7 +139,7 @@ class ElasticsearchAdapter:
         body = build_query(filters)
         request: dict[str, Any] = {
             "index": self.index,
-            "query": body["bool"],
+            "query": {"bool": body["bool"]},
             "sort": body["sort"],
             "size": filters.limit,
         }
@@ -184,7 +186,7 @@ class ElasticsearchAdapter:
         body = build_query(filters)
         request: dict[str, Any] = {
             "index": self.index,
-            "query": body["bool"],
+            "query": {"bool": body["bool"]},
             "size": 0,
             "aggs": {
                 "levels": {"terms": {"field": "level", "size": 10}},
