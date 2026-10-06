@@ -1,6 +1,21 @@
 # LogScope Python
 
+[![CI](https://github.com/denfry/logscope-python/actions/workflows/ci.yml/badge.svg)](https://github.com/denfry/logscope-python/actions/workflows/ci.yml)
+
 LogScope is a bounded log-ingestion and search service built around FastAPI, PostgreSQL, Elasticsearch, Redis, Docker Compose, and GitLab CI. It accepts structured log batches, persists indexing jobs durably, and exposes typed full-text and exact-filter search.
+
+## Quick start
+
+Requirements: Docker Engine with Compose v2 and Python 3.12 (for the smoke script).
+
+```bash
+cp .env.example .env          # use `copy` in cmd.exe
+docker compose up --build -d
+python scripts/smoke.py
+docker compose down -v
+```
+
+The API listens on <http://localhost:8080>. See [Local setup](#local-setup) to run the API outside Docker.
 
 ## Architecture
 
@@ -74,10 +89,10 @@ curl http://localhost:8080/metrics
 Requirements: Python 3.12, Docker Engine with Compose v2.
 
 ```bash
-py -3.12 -m venv .venv
-.venv\Scripts\activate
+python3.12 -m venv .venv
+source .venv/bin/activate     # Windows: .venv\Scripts\activate
 python -m pip install -e ".[dev]"
-copy .env.example .env
+cp .env.example .env
 python -m app.main
 ```
 
@@ -113,24 +128,37 @@ The index mapping explicitly defines timestamp, level, service, environment, sou
 
 Transient Elasticsearch bulk failures (HTTP 429 and 5xx) are retried with bounded exponential backoff and jitter until `WORKER_MAX_ATTEMPTS`. Mapping and other terminal failures are marked failed immediately. Error classes are sanitized and truncated before storage.
 
-## Verification
+## Project layout
+
+```text
+app/api.py, app/main.py   FastAPI routes and process entry points (API and worker)
+app/domain/               Normalization, query building, retry policy
+app/services/             Ingest and search use cases
+app/repositories/         PostgreSQL job and batch persistence
+app/adapters/             Elasticsearch and Redis rate-limit adapters
+migrations/               SQL schema
+scripts/smoke.py          End-to-end smoke check against the Compose stack
+tests/                    unit, api and integration (Testcontainers) suites
+```
+
+## Testing
 
 Unit and API tests run without external services:
 
 ```bash
-py -3.12 -m pytest -m 'not integration' --cov=app --cov-fail-under=80
-py -3.12 -m ruff check app tests
-py -3.12 -m mypy app
-py -3.12 -m bandit -q -r app
+python -m pytest -m 'not integration' --cov=app --cov-fail-under=80
+python -m ruff check app tests
+python -m mypy app
+python -m bandit -q -r app
 ```
 
 Integration tests start real PostgreSQL and Elasticsearch containers through Testcontainers:
 
 ```bash
-py -3.12 -m pytest -m integration -q
+python -m pytest -m integration -q
 ```
 
-The GitLab pipeline separates `lint`, `unit`, `integration`, `build`, and `smoke` stages. The smoke path performs ingest, batch completion polling, search-hit polling, health, readiness, and metrics checks.
+The GitLab pipeline (`.gitlab-ci.yml`) separates `lint`, `unit`, `integration`, `build`, and `smoke` stages. The smoke path performs ingest, batch completion polling, search-hit polling, health, readiness, and metrics checks.
 
 ## Security notes
 
